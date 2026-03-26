@@ -30,11 +30,17 @@ RFM_NOTEBOOK_GITHUB_URL = (
 BMW_DATASET_GITHUB_URL = "https://raw.githubusercontent.com/amir-elrady/bmw-project/main/bmw_global_sales_2018_2025.csv"
 
 # ----- Data loading & cleaning -----
-@st.cache_data
+@st.cache_data(show_spinner=True)
+def load_raw_retail_excel():
+    """Single read of the workbook; reused by cleaning and return-rate paths (much faster on Cloud)."""
+    return pd.read_excel(DATA_FILE)
+
+
+@st.cache_data(show_spinner=False)
 def load_data_for_returns():
     """Load data for return-rate only: no dropna (keeps rows without CustomerID), no exclusion of
     credit-note invoices (C-invoices), so returns/refunds are included for an accurate return rate."""
-    df = pd.read_excel(DATA_FILE)
+    df = load_raw_retail_excel().copy()
     df = df.drop_duplicates()
     df["Revenue"] = df["Quantity"] * df["UnitPrice"]
     return df
@@ -49,9 +55,9 @@ def fetch_github_raw_bytes(url: str):
     except Exception:
         return None
 
-@st.cache_data
+@st.cache_data(show_spinner=True)
 def load_and_clean():
-    df = pd.read_excel(DATA_FILE)
+    df = load_raw_retail_excel()
     df_clean = df.copy()
     df_clean = df_clean.drop_duplicates()
     df_clean = df_clean.dropna(subset=["CustomerID", "Description"])
@@ -764,6 +770,9 @@ def main():
         st.sidebar.caption("Data: Online Retail")
         page = st.sidebar.radio("Analysis", ["Dataset and Python Code Used", "Customer Overview", "RFM Analysis"])
 
+        st.caption(
+            "Loading can take **1–3 minutes** on Streamlit Cloud the first time — the dataset is a ~23 MB Excel file."
+        )
         df_clean = load_and_clean()
         rfm = get_rfm(df_clean)
         df_returns = load_data_for_returns()
