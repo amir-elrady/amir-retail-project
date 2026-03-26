@@ -41,10 +41,10 @@ def load_data_for_returns():
 
 
 @st.cache_data
-def fetch_bmw_dataset_bytes(url: str):
-    """Fetch BMW CSV bytes so Streamlit can provide a real download button."""
+def fetch_github_raw_bytes(url: str):
+    """Fetch file bytes from a GitHub raw URL for st.download_button (avoids browser showing raw text)."""
     try:
-        with urlopen(url, timeout=20) as response:
+        with urlopen(url, timeout=90) as response:
             return response.read()
     except Exception:
         return None
@@ -402,18 +402,41 @@ def page_python_code():
         "customer behavior, product performance, and RFM-based customer segmentation."
     )
     st.markdown("Download resources used in this portfolio project:")
-    st.link_button(
-        "Download Dataset (Online Retail.xlsx)",
-        RETAIL_DATA_GITHUB_URL,
-    )
-    st.link_button(
-        "Download Notebook (retail_data_analysis.ipynb)",
-        RETAIL_NOTEBOOK_GITHUB_URL,
-    )
-    st.link_button(
-        "Download Notebook (rfm_analysis.ipynb)",
-        RFM_NOTEBOOK_GITHUB_URL,
-    )
+    retail_xlsx_bytes = fetch_github_raw_bytes(RETAIL_DATA_GITHUB_URL)
+    if retail_xlsx_bytes:
+        st.download_button(
+            "Download Dataset (Online Retail.xlsx)",
+            data=retail_xlsx_bytes,
+            file_name="Online Retail.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_portfolio_retail_xlsx",
+        )
+    else:
+        st.warning("Could not load the dataset from GitHub. Refresh the page or try again shortly.")
+
+    retail_nb_bytes = fetch_github_raw_bytes(RETAIL_NOTEBOOK_GITHUB_URL)
+    if retail_nb_bytes:
+        st.download_button(
+            "Download Notebook (retail_data_analysis.ipynb)",
+            data=retail_nb_bytes,
+            file_name="retail_data_analysis.ipynb",
+            mime="application/x-ipynb+json",
+            key="dl_portfolio_retail_ipynb",
+        )
+    else:
+        st.warning("Could not load retail_data_analysis.ipynb from GitHub. Refresh the page or try again shortly.")
+
+    rfm_nb_bytes = fetch_github_raw_bytes(RFM_NOTEBOOK_GITHUB_URL)
+    if rfm_nb_bytes:
+        st.download_button(
+            "Download Notebook (rfm_analysis.ipynb)",
+            data=rfm_nb_bytes,
+            file_name="rfm_analysis.ipynb",
+            mime="application/x-ipynb+json",
+            key="dl_portfolio_rfm_ipynb",
+        )
+    else:
+        st.warning("Could not load rfm_analysis.ipynb from GitHub. Refresh the page or try again shortly.")
     st.markdown("Key code used to build this analysis dashboard:")
     st.markdown("---")
 
@@ -520,16 +543,17 @@ def page_bmw_sql_queries():
         "by model category, and macroeconomic sensitivity."
     )
     if BMW_DATASET_GITHUB_URL:
-        remote_csv = fetch_bmw_dataset_bytes(BMW_DATASET_GITHUB_URL)
+        remote_csv = fetch_github_raw_bytes(BMW_DATASET_GITHUB_URL)
         if remote_csv:
             st.download_button(
                 "Download BMW Dataset (CSV)",
                 data=remote_csv,
                 file_name="bmw_global_sales_2018_2025.csv",
                 mime="text/csv",
+                key="dl_portfolio_bmw_csv",
             )
         else:
-            st.link_button("Open BMW Dataset (CSV)", BMW_DATASET_GITHUB_URL)
+            st.warning("Could not load the BMW CSV from GitHub. Refresh the page or try again shortly.")
     st.markdown("SQL queries used for the BMW Global Sales Project:")
     st.markdown("---")
 
