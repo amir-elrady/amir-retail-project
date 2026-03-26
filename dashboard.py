@@ -6,7 +6,9 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import streamlit.components.v1 as components
 from pathlib import Path
+from urllib.request import urlopen
 
 # Shared color palette for charts (distinct and easy to differentiate)
 CHART_COLORS = [
@@ -17,8 +19,15 @@ CHART_COLORS = [
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "Online Retail.xlsx"
-RETAIL_NOTEBOOK = BASE_DIR / "retail_data_analysis.ipynb"
-RFM_NOTEBOOK = BASE_DIR / "rfm_analysis.ipynb"
+# Portfolio downloads only (no local file fallbacks — same files as in the GitHub repo)
+RETAIL_DATA_GITHUB_URL = "https://raw.githubusercontent.com/amir-elrady/amir-retail-project/main/Online%20Retail.xlsx"
+RETAIL_NOTEBOOK_GITHUB_URL = (
+    "https://raw.githubusercontent.com/amir-elrady/amir-retail-project/main/retail_data_analysis.ipynb"
+)
+RFM_NOTEBOOK_GITHUB_URL = (
+    "https://raw.githubusercontent.com/amir-elrady/amir-retail-project/main/rfm_analysis.ipynb"
+)
+BMW_DATASET_GITHUB_URL = "https://raw.githubusercontent.com/amir-elrady/bmw-project/main/bmw_global_sales_2018_2025.csv"
 
 # ----- Data loading & cleaning -----
 @st.cache_data
@@ -29,6 +38,16 @@ def load_data_for_returns():
     df = df.drop_duplicates()
     df["Revenue"] = df["Quantity"] * df["UnitPrice"]
     return df
+
+
+@st.cache_data
+def fetch_bmw_dataset_bytes(url: str):
+    """Fetch BMW CSV bytes so Streamlit can provide a real download button."""
+    try:
+        with urlopen(url, timeout=20) as response:
+            return response.read()
+    except Exception:
+        return None
 
 @st.cache_data
 def load_and_clean():
@@ -279,11 +298,20 @@ def page_customer_rfm(df_clean, rfm):
     cid = int(selected_id)
     cust_rfm = rfm[rfm["CustomerID"] == cid].iloc[0]
     segment = cust_rfm["Segment"]
+    r_score = int(cust_rfm["R_score"])
+    f_score = int(cust_rfm["F_score"])
+    m_score = int(cust_rfm["M_score"])
+    rfm_score = f"{r_score}{f_score}{m_score}"
 
     # Segment & recommendations
     st.subheader(f"Segment: {segment}")
     rec = SEGMENT_RECOMMENDATIONS.get(segment, "Review behavior and tailor outreach.")
     st.info(rec)
+    score_col1, score_col2, score_col3, score_col4 = st.columns(4)
+    score_col1.metric("RFM Score", rfm_score)
+    score_col2.metric("Recency Score (R)", r_score)
+    score_col3.metric("Frequency Score (F)", f_score)
+    score_col4.metric("Monetary Score (M)", m_score)
     st.markdown("---")
 
     # Customer profile
@@ -364,31 +392,29 @@ def page_customer_rfm(df_clean, rfm):
         st.plotly_chart(fig_cat, use_container_width=True)
 
 def page_python_code():
-    st.title("Python Code")
+    st.title("Dataset and Python Code Used")
     st.markdown("---")
-    st.markdown("Key code used to build this analysis dashboard.")
+    st.markdown(
+        "This project uses the UCI Online Retail dataset, which contains transactional records "
+        "from a UK-based online gift retailer between 2010 and 2011. Each row represents an item "
+        "within an invoice and includes fields such as invoice number, product description, quantity, "
+        "invoice date, unit price, customer ID, and country. The analysis focuses on revenue trends, "
+        "customer behavior, product performance, and RFM-based customer segmentation."
+    )
     st.markdown("Download resources used in this portfolio project:")
-    with open(DATA_FILE, "rb") as f:
-        st.download_button(
-            label="Download Dataset (Online Retail.xlsx)",
-            data=f.read(),
-            file_name="Online Retail.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    with open(RETAIL_NOTEBOOK, "rb") as f:
-        st.download_button(
-            label="Download Notebook (retail_data_analysis.ipynb)",
-            data=f.read(),
-            file_name="retail_data_analysis.ipynb",
-            mime="application/x-ipynb+json",
-        )
-    with open(RFM_NOTEBOOK, "rb") as f:
-        st.download_button(
-            label="Download Notebook (rfm_analysis.ipynb)",
-            data=f.read(),
-            file_name="rfm_analysis.ipynb",
-            mime="application/x-ipynb+json",
-        )
+    st.link_button(
+        "Download Dataset (Online Retail.xlsx)",
+        RETAIL_DATA_GITHUB_URL,
+    )
+    st.link_button(
+        "Download Notebook (retail_data_analysis.ipynb)",
+        RETAIL_NOTEBOOK_GITHUB_URL,
+    )
+    st.link_button(
+        "Download Notebook (rfm_analysis.ipynb)",
+        RFM_NOTEBOOK_GITHUB_URL,
+    )
+    st.markdown("Key code used to build this analysis dashboard:")
     st.markdown("---")
 
     code_1 = """import pandas as pd
@@ -482,27 +508,255 @@ rfm["M_score"] = pd.qcut(rfm["Monetary"].rank(method="first"), q=5, labels=[1, 2
             key="download_code_4",
         )
 
+def page_bmw_sql_queries():
+    st.title("SQL Queries Used")
+    st.markdown("---")
+    st.caption("Dataset is synthetic, designed to simulate BMW global sales patterns for the purpose of demonstrating SQL and Tableau skills.")
+    st.markdown(
+        "This project uses a synthetic BMW global sales dataset covering monthly performance from "
+        "2018 to 2025 across four regions (Europe, China, USA, and Rest of World). The data includes "
+        "model-level units sold, average price, revenue, BEV adoption share, premium share, GDP growth, "
+        "and fuel price index. The SQL analysis highlights data cleaning, EV adoption trends, revenue mix "
+        "by model category, and macroeconomic sensitivity."
+    )
+    if BMW_DATASET_GITHUB_URL:
+        remote_csv = fetch_bmw_dataset_bytes(BMW_DATASET_GITHUB_URL)
+        if remote_csv:
+            st.download_button(
+                "Download BMW Dataset (CSV)",
+                data=remote_csv,
+                file_name="bmw_global_sales_2018_2025.csv",
+                mime="text/csv",
+            )
+        else:
+            st.link_button("Open BMW Dataset (CSV)", BMW_DATASET_GITHUB_URL)
+    st.markdown("SQL queries used for the BMW Global Sales Project:")
+    st.markdown("---")
+
+    query_1 = """-- Data Cleaning & Transformation
+-- Source table:  bmw_global_sales  (raw CSV upload)
+-- Output table:  bmw_global_sales_clean
+--
+-- Pre-cleaning audit results:
+--   Rows: 3,072 — matches expected count (8 years x 4 regions x 12 months x 8 models)
+--   Nulls: 0 across all columns
+--   Duplicates: 0
+--   Revenue: Verified as Units_Sold x Avg_Price_EUR with no discrepancies
+--
+-- Issues found:
+--   9 rows contain slightly negative BEV_Share values (e.g. -0.001, -0.015),
+--   all from 2018. These are floating point rounding errors, not real negatives.
+--   Fixed by clamping to 0 using GREATEST(BEV_Share, 0).
+--
+-- Enhancements added:
+--   - Year_Month: proper DATE column for time-series work
+--   - Model_Category: SUV / Sedan / Electric / MINI grouping for segmentation
+--   - BEV_Share_Pct: BEV_Share converted to percentage (x100) for readability
+--   - data_quality_flag: marks the 9 corrected rows with original value
+
+CREATE OR REPLACE TABLE `bmw-data-491218.bmw_sales.bmw_global_sales_clean` AS
+WITH source AS (SELECT * FROM `bmw-data-491218.bmw_sales.bmw_global_sales`)
+SELECT
+  Year, Month,
+  DATE(Year, Month, 1) AS Year_Month,
+  Region, Model,
+  CASE
+    WHEN Model IN ('X3','X5','X7') THEN 'SUV'
+    WHEN Model IN ('3 Series','5 Series') THEN 'Sedan'
+    WHEN Model IN ('i4','iX') THEN 'Electric'
+    ELSE 'MINI'
+  END AS Model_Category,
+  Units_Sold, Avg_Price_EUR, Revenue_EUR,
+  GREATEST(BEV_Share, 0) AS BEV_Share,
+  ROUND(GREATEST(BEV_Share, 0) * 100, 2) AS BEV_Share_Pct,
+  Premium_Share, GDP_Growth, Fuel_Price_Index,
+  CASE WHEN BEV_Share < 0
+    THEN 'BEV_Share corrected (was ' || CAST(ROUND(BEV_Share,4) AS STRING) || ')'
+    ELSE 'OK'
+  END AS data_quality_flag
+FROM source;
+
+-- Verification queries:
+-- SELECT COUNT(*) AS total_rows FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean`;
+-- SELECT COUNT(*) AS neg_bev_remaining FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean` WHERE BEV_Share < 0;
+-- SELECT * FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean` WHERE data_quality_flag != 'OK';"""
+    with st.expander("1) Cleaning the data", expanded=True):
+        st.code(query_1, language="sql")
+        st.download_button(
+            label="Download this query",
+            data=query_1,
+            file_name="01_data_cleaning_transformation.sql",
+            mime="text/sql",
+            key="download_sql_1",
+        )
+
+    query_2 = """-- Q1: EV Adoption Trajectory by Region (2018–2025)
+--
+-- Question: Which regions are leading BMW's shift to electric, and how quickly
+-- is that share growing year over year?
+--
+-- Approach: Aggregate BEV_Share_Pct to annual averages per region, then apply
+-- a LAG window function to calculate YoY growth rate. BEV_Share_Pct is already
+-- cleaned and pre-computed in the source table.
+--
+-- Note: YoY growth returns NULL for 2018 (no prior year to compare against).
+-- This is expected and correct — do not treat it as missing data.
+
+CREATE OR REPLACE TABLE `bmw-data-491218.bmw_sales.bmw_ev_adoption_by_region` AS
+WITH annual_bev AS (
+  SELECT
+    Year, Region,
+    ROUND(AVG(BEV_Share_Pct), 2) AS Avg_BEV_Share_Pct,
+    SUM(Units_Sold) AS Total_Units_Sold,
+    ROUND(SUM(Revenue_EUR) / 1e9, 2) AS Total_Revenue_BEUR
+  FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean`
+  GROUP BY Year, Region
+)
+SELECT
+  Year, Region, Avg_BEV_Share_Pct, Total_Units_Sold, Total_Revenue_BEUR,
+  ROUND(
+    (Avg_BEV_Share_Pct - LAG(Avg_BEV_Share_Pct) OVER (PARTITION BY Region ORDER BY Year))
+    / NULLIF(LAG(Avg_BEV_Share_Pct) OVER (PARTITION BY Region ORDER BY Year), 0) * 100, 1
+  ) AS YoY_BEV_Growth_Pct
+FROM annual_bev
+ORDER BY Region, Year;"""
+    with st.expander("2) EV Adoption Trajectory"):
+        st.code(query_2, language="sql")
+        st.download_button(
+            label="Download this query",
+            data=query_2,
+            file_name="02_ev_adoption_trajectory.sql",
+            mime="text/sql",
+            key="download_sql_2",
+        )
+
+    query_3 = """-- Q2: Revenue Mix by Model Category Over Time (2018–2025)
+--
+-- Question: Which model category drives BMW's revenue, and is the product mix
+-- shifting meaningfully toward electric vehicles?
+--
+-- Approach: Group by Year and Model_Category (derived during cleaning) to get
+-- annual revenue, unit volume, and average price per segment. A window function
+-- calculates each segment's share of total revenue within a given year.
+--
+-- Model categories: SUV (X3/X5/X7), Sedan (3 Series/5 Series),
+--                   Electric (i4/iX), MINI
+
+CREATE OR REPLACE TABLE `bmw-data-491218.bmw_sales.bmw_revenue_mix_by_category` AS
+WITH segment_totals AS (
+  SELECT
+    Year, Model_Category,
+    ROUND(SUM(Revenue_EUR) / 1e9, 2) AS Revenue_BEUR,
+    SUM(Units_Sold) AS Total_Units,
+    ROUND(AVG(Avg_Price_EUR), 0) AS Avg_Model_Price_EUR
+  FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean`
+  GROUP BY Year, Model_Category
+)
+SELECT
+  Year, Model_Category, Revenue_BEUR, Total_Units, Avg_Model_Price_EUR,
+  ROUND(Revenue_BEUR * 100.0 / SUM(Revenue_BEUR) OVER (PARTITION BY Year), 1) AS Revenue_Share_Pct
+FROM segment_totals
+ORDER BY Year, Revenue_BEUR DESC;"""
+    with st.expander("3) Revenue Comparison"):
+        st.code(query_3, language="sql")
+        st.download_button(
+            label="Download this query",
+            data=query_3,
+            file_name="03_revenue_comparison.sql",
+            mime="text/sql",
+            key="download_sql_3",
+        )
+
+    query_4 = """-- Q3: Macro Sensitivity — GDP Growth & Fuel Price vs. Sales Volume (2018–2025)
+--
+-- Question: How sensitive is BMW's demand to macroeconomic conditions,
+-- and which region shows the strongest relationship between economic factors
+-- and sales performance?
+--
+-- Approach: Aggregate to annual totals per region, then calculate YoY unit
+-- growth alongside the prevailing GDP growth and fuel price environment.
+-- The relationship between macro indicators and sales volume is weak across
+-- all regions, but this output lets you visually inspect specific
+-- year-over-year dynamics and flag any outlier periods worth investigating.
+--
+-- Note: GDP_Growth and Fuel_Price_Index are region-level macro indicators
+-- averaged across all models for a given region-year. YoY growth is NULL
+-- for 2018 (base year).
+
+CREATE OR REPLACE TABLE `bmw-data-491218.bmw_sales.bmw_macro_vs_sales` AS
+WITH regional_annual AS (
+  SELECT
+    Region, Year,
+    SUM(Units_Sold) AS Total_Units,
+    ROUND(AVG(GDP_Growth), 3) AS Avg_GDP_Growth,
+    ROUND(AVG(Fuel_Price_Index), 3) AS Avg_Fuel_Price_Idx,
+    ROUND(SUM(Revenue_EUR) / 1e9, 2) AS Total_Revenue_BEUR
+  FROM `bmw-data-491218.bmw_sales.bmw_global_sales_clean`
+  GROUP BY Region, Year
+)
+SELECT
+  Region, Year, Total_Units, Avg_GDP_Growth, Avg_Fuel_Price_Idx, Total_Revenue_BEUR,
+  ROUND(
+    (Total_Units - LAG(Total_Units) OVER (PARTITION BY Region ORDER BY Year)) * 100.0
+    / NULLIF(LAG(Total_Units) OVER (PARTITION BY Region ORDER BY Year), 0), 1
+  ) AS Units_YoY_Growth_Pct
+FROM regional_annual
+ORDER BY Region, Year;"""
+    with st.expander("4) GDP & Fuel vs Sales"):
+        st.code(query_4, language="sql")
+        st.download_button(
+            label="Download this query",
+            data=query_4,
+            file_name="04_gdp_fuel_vs_sales.sql",
+            mime="text/sql",
+            key="download_sql_4",
+        )
+
+def page_bmw_tableau_visualizations():
+    st.title("Tableau Visualizations")
+    st.markdown("---")
+    st.caption("Dataset is synthetic, designed to simulate BMW global sales patterns for the purpose of demonstrating SQL and Tableau skills.")
+    st.warning("For the best viewing experience and correct layout, please switch to full-screen mode when exploring this dashboard.")
+    tableau_url = "https://public.tableau.com/views/bmwsalesviz/Dashboard1?:showVizHome=no"
+    st.link_button("Open Tableau in new tab", tableau_url)
+    components.iframe(tableau_url, height=900, scrolling=True)
+
 # ----- Main -----
 def main():
-    st.set_page_config(page_title="Retail & RFM Dashboard", page_icon="📊", layout="wide")
-    st.sidebar.title("Navigation")
-    project = st.sidebar.selectbox("Project", ["Retail & RFM Analysis"])
-    st.sidebar.caption("More projects can be added here.")
+    st.set_page_config(page_title="Amir's Portfolio", page_icon="📊", layout="wide")
+    st.sidebar.title("Amir's Portfolio")
+    st.sidebar.markdown("### Navigation")
+    st.sidebar.markdown("### Select Portfolio Project")
+    project = st.sidebar.selectbox(
+        "Select Portfolio Project",
+        ["Select a project...", "Online Retail Project", "BMW Global Sales Analysis"],
+        label_visibility="collapsed",
+    )
 
-    if project == "Retail & RFM Analysis":
-        st.sidebar.caption("Data: Online Retail (cleaned)")
-        page = st.sidebar.radio("Analysis", ["Customer Overview", "RFM Analysis", "Python Code"])
+    if project == "Select a project...":
+        st.markdown("### Welcome to my portfolio")
+        st.info("Please select a project from the left sidebar to begin.")
+    elif project == "Online Retail Project":
+        st.sidebar.caption("Data: Online Retail")
+        page = st.sidebar.radio("Analysis", ["Dataset and Python Code Used", "Customer Overview", "RFM Analysis"])
 
         df_clean = load_and_clean()
         rfm = get_rfm(df_clean)
         df_returns = load_data_for_returns()
 
-        if page == "Customer Overview":
-            page_business_overview(df_clean, df_returns)
-        elif page == "RFM Analysis":
-            page_customer_rfm(df_clean, rfm)
-        else:
+        if page == "Dataset and Python Code Used":
             page_python_code()
+        elif page == "Customer Overview":
+            page_business_overview(df_clean, df_returns)
+        else:
+            page_customer_rfm(df_clean, rfm)
+    else:
+        st.sidebar.caption("Data: BMW Global Sales")
+        bmw_page = st.sidebar.radio("Analysis", ["SQL Queries Used", "Tableau Visualizations"])
+        if bmw_page == "SQL Queries Used":
+            page_bmw_sql_queries()
+        else:
+            page_bmw_tableau_visualizations()
 
 if __name__ == "__main__":
     main()
