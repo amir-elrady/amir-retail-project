@@ -758,7 +758,7 @@ ORDER BY Region, Year;"""
 def page_bmw_tableau_visualizations():
     st.title("Tableau Visualizations")
     st.markdown("---")
-    st.warning("For the best viewing experience and correct layout, please switch to full-screen mode when exploring this dashboard.")
+    st.warning("Full-screen mode is required for proper viewing. Please open this dashboard in full screen to avoid clutter, reduce scroll bars, and see the intended layout.")
     tableau_url = "https://public.tableau.com/views/bmwsalesviz/Dashboard1?:showVizHome=no"
     st.link_button("Open Tableau in new tab", tableau_url)
     components.iframe(tableau_url, height=900, scrolling=True)
