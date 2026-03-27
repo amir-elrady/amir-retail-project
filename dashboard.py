@@ -397,8 +397,8 @@ def page_customer_rfm(df_clean, rfm):
         fig_cat.update_layout(template="plotly_white", height=360)
         st.plotly_chart(fig_cat, use_container_width=True)
 
-def page_python_code():
-    st.title("Dataset and Python Code Used")
+def page_online_retail_intro():
+    st.title("Project Intro")
     st.markdown("---")
     st.markdown(
         "This project uses the UCI Online Retail dataset, which contains transactional records "
@@ -407,6 +407,27 @@ def page_python_code():
         "invoice date, unit price, customer ID, and country. The analysis focuses on revenue trends, "
         "customer behavior, product performance, and RFM-based customer segmentation."
     )
+
+
+def page_bmw_intro():
+    st.title("Project Intro")
+    st.markdown("---")
+    st.caption(
+        "Dataset is synthetic, designed to simulate BMW global sales patterns for the purpose of "
+        "demonstrating SQL and Tableau skills."
+    )
+    st.markdown(
+        "This project uses a synthetic BMW global sales dataset covering monthly performance from "
+        "2018 to 2025 across four regions (Europe, China, USA, and Rest of World). The data includes "
+        "model-level units sold, average price, revenue, BEV adoption share, premium share, GDP growth, "
+        "and fuel price index. The SQL analysis highlights data cleaning, EV adoption trends, revenue mix "
+        "by model category, and macroeconomic sensitivity."
+    )
+
+
+def page_python_code():
+    st.title("Dataset and Python Code Used")
+    st.markdown("---")
     st.markdown("Download resources used in this portfolio project:")
     retail_xlsx_bytes = fetch_github_raw_bytes(RETAIL_DATA_GITHUB_URL)
     if retail_xlsx_bytes:
@@ -540,14 +561,6 @@ rfm["M_score"] = pd.qcut(rfm["Monetary"].rank(method="first"), q=5, labels=[1, 2
 def page_bmw_sql_queries():
     st.title("SQL Queries Used")
     st.markdown("---")
-    st.caption("Dataset is synthetic, designed to simulate BMW global sales patterns for the purpose of demonstrating SQL and Tableau skills.")
-    st.markdown(
-        "This project uses a synthetic BMW global sales dataset covering monthly performance from "
-        "2018 to 2025 across four regions (Europe, China, USA, and Rest of World). The data includes "
-        "model-level units sold, average price, revenue, BEV adoption share, premium share, GDP growth, "
-        "and fuel price index. The SQL analysis highlights data cleaning, EV adoption trends, revenue mix "
-        "by model category, and macroeconomic sensitivity."
-    )
     if BMW_DATASET_GITHUB_URL:
         remote_csv = fetch_github_raw_bytes(BMW_DATASET_GITHUB_URL)
         if remote_csv:
@@ -745,7 +758,6 @@ ORDER BY Region, Year;"""
 def page_bmw_tableau_visualizations():
     st.title("Tableau Visualizations")
     st.markdown("---")
-    st.caption("Dataset is synthetic, designed to simulate BMW global sales patterns for the purpose of demonstrating SQL and Tableau skills.")
     st.warning("For the best viewing experience and correct layout, please switch to full-screen mode when exploring this dashboard.")
     tableau_url = "https://public.tableau.com/views/bmwsalesviz/Dashboard1?:showVizHome=no"
     st.link_button("Open Tableau in new tab", tableau_url)
@@ -768,25 +780,33 @@ def main():
         st.info("Please select a project from the left sidebar to begin.")
     elif project == "Online Retail Project":
         st.sidebar.caption("Data: Online Retail")
-        page = st.sidebar.radio("Analysis", ["Dataset and Python Code Used", "Customer Overview", "RFM Analysis"])
-
-        st.caption(
-            "Loading can take **1–3 minutes** on Streamlit Cloud the first time — the dataset is a ~23 MB Excel file."
+        page = st.sidebar.radio(
+            "Analysis",
+            ["Project Intro", "Dataset and Python Code Used", "Customer Overview", "RFM Analysis"],
         )
-        df_clean = load_and_clean()
-        rfm = get_rfm(df_clean)
-        df_returns = load_data_for_returns()
 
-        if page == "Dataset and Python Code Used":
-            page_python_code()
-        elif page == "Customer Overview":
-            page_business_overview(df_clean, df_returns)
+        if page == "Project Intro":
+            page_online_retail_intro()
         else:
-            page_customer_rfm(df_clean, rfm)
+            st.caption(
+                "Loading can take **1–3 minutes** on Streamlit Cloud the first time — the dataset is a ~23 MB Excel file."
+            )
+            df_clean = load_and_clean()
+            rfm = get_rfm(df_clean)
+            df_returns = load_data_for_returns()
+
+            if page == "Dataset and Python Code Used":
+                page_python_code()
+            elif page == "Customer Overview":
+                page_business_overview(df_clean, df_returns)
+            else:
+                page_customer_rfm(df_clean, rfm)
     else:
         st.sidebar.caption("Data: BMW Global Sales")
-        bmw_page = st.sidebar.radio("Analysis", ["SQL Queries Used", "Tableau Visualizations"])
-        if bmw_page == "SQL Queries Used":
+        bmw_page = st.sidebar.radio("Analysis", ["Project Intro", "SQL Queries Used", "Tableau Visualizations"])
+        if bmw_page == "Project Intro":
+            page_bmw_intro()
+        elif bmw_page == "SQL Queries Used":
             page_bmw_sql_queries()
         else:
             page_bmw_tableau_visualizations()
